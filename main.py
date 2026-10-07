@@ -12,8 +12,10 @@ API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
 
-# SEKARANG MENGGUNAKAN LIST UNTUK 2 GRUP TARGET
-TARGET_CHATS = [-1004380577102, -1004389949822] 
+# Kedua ID grup target Anda
+GRUP_LAMA = -1004380577102
+GRUP_BARU = -1004389949822
+TARGET_CHATS = [GRUP_LAMA, GRUP_BARU] 
 
 app = Client(
     "my_ubot",
@@ -23,21 +25,27 @@ app = Client(
     in_memory=True
 )
 
-# Filter disetel untuk mendeteksi pesan dari List TARGET_CHATS
+# Filter mendeteksi pesan dari kedua grup
 @app.on_message(filters.chat(TARGET_CHATS) & filters.text & ~filters.me)
 async def deteksi_pancing(client, message):
     if "Hasil tangkapan sudah dikirim ke pesan bot masing-masing" in message.text:
-        # Mengambil ID grup tempat pesan itu muncul
         current_chat_id = message.chat.id
-        print(f"Pesan pemicu terdeteksi di grup {current_chat_id}! Mengirim perintah pancing...")
+        
+        # Penyesuaian isi teks perintah berdasarkan masing-masing grup
+        if current_chat_id == GRUP_BARU:
+            pesan_perintah = "/open_mancing@fish_it_vip3_bot"
+        else:
+            pesan_perintah = "/open_mancing@fish_it_vip_bot"
+            
+        print(f"Pemicu terdeteksi di grup {current_chat_id}! Mengirim: {pesan_perintah}")
         
         # Jeda 1 detik agar natural
         await asyncio.sleep(1) 
         
-        # Membalas otomatis ke grup yang bersangkutan
+        # Mengirimkan pesan perintah yang sesuai ke grup masing-masing
         await client.send_message(
             chat_id=current_chat_id,
-            text="/open_mancing@fish_it_vip_bot"
+            text=pesan_perintah
         )
 
 # Fungsi utama untuk sinkronisasi database peer/grup
@@ -51,7 +59,7 @@ async def main():
         except Exception:
             print("Sinkronisasi database dilewati, ubot tetap berjalan.")
             
-        print("Ubot Pancing Otomatis Aktif & Mengunci Dua Grup Target!")
+        print("Ubot Pancing Otomatis Aktif dengan Perintah Berbeda di Tiap Grup!")
         
         # Menjaga skrip tetap stand-by 24 jam
         while True:
