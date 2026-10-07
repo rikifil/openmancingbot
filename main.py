@@ -1,6 +1,11 @@
 import os
 import asyncio
+import logging
 from pyrogram import Client, filters
+
+# Pembungkaman total semua logger bawaan Pyrogram
+logging.basicConfig(level=logging.ERROR)
+logging.getLogger("pyrogram").setLevel(logging.CRITICAL)
 
 # Mengambil konfigurasi dari Config Vars Heroku
 API_ID = int(os.environ.get("API_ID"))
@@ -10,52 +15,44 @@ SESSION_STRING = os.environ.get("SESSION_STRING")
 # ID Grup Target Spesifik Anda
 TARGET_CHAT_ID = -1004380577102 
 
-# Inisialisasi Pyrogram Client
 app = Client(
     "my_ubot",
     api_id=API_ID,
     api_hash=API_HASH,
-    session_string=SESSION_STRING
+    session_string=SESSION_STRING,
+    in_memory=True
 )
 
-# Fungsi yang berjalan otomatis saat ubot baru menyala
-async def load_database():
+# Filter dikunci total untuk grup target saja
+@app.on_message(filters.chat(TARGET_CHAT_ID) & filters.text & ~filters.me)
+async def deteksi_pancing(client, message):
+    if "Hasil tangkapan sudah dikirim ke pesan bot masing-masing" in message.text:
+        print("Pesan pemicu terdeteksi di grup target! Mengirim perintah pancing...")
+        await asyncio.sleep(1) 
+        await client.send_message(
+            chat_id=TARGET_CHAT_ID,
+            text="/open_mancing@fish_it_vip_bot"
+        )
+
+# Fungsi utama untuk memancing pengenalan seluruh peer/grup akun Anda
+async def main():
     async with app:
         print("Sedang menyinkronkan database grup... Mohon tunggu sebentar.")
         try:
-            # Trik memaksa Pyrogram memuat semua chat ke memori agar tidak memicu 'Peer id invalid'
-            async for dialog in app.get_dialogs(limit=100):
+            # Trik jitu: Mengambil semua chat aktif agar tersimpan di cache RAM Heroku
+            async for dialog in app.get_dialogs():
                 pass
             print("Sinkronisasi database selesai! Semua grup berhasil dikenali.")
-        except Exception as e:
-            print(f"Gagal memuat dialog otomatis: {e}")
-
-# Handler utama untuk mendeteksi pesan teks
-@app.on_message(filters.text & ~filters.me)
-async def deteksi_pancing(client, message):
-    try:
-        # Saring manual: jika bukan grup target, langsung abaikan
-        if message.chat.id != TARGET_CHAT_ID:
-            return
-
-        # Cek kata kunci pemicu sesuai gambar pertama Anda
-        if "Hasil tangkapan sudah dikirim ke pesan bot masing-masing" in message.text:
-            print("Pesan pemicu terdeteksi di grup target! Mengirim perintah...")
+        except Exception:
+            print("Sinkronisasi database dilewati, ubot tetap berjalan.")
             
-            # Jeda 1 detik agar natural
-            await asyncio.sleep(1) 
-            
-            # Kirim pesan otomatis ke grup target
-            await client.send_message(
-                chat_id=TARGET_CHAT_ID,
-                text="/open_mancing@fish_it_vip_bot"
-            )
-    except Exception:
-        pass
+        print("Ubot Pancing Otomatis Aktif & Siap Digunakan!")
+        
+        # Menjaga skrip tetap stand-by 24 jam
+        while True:
+            await asyncio.sleep(3600)
 
-# Menjalankan sinkronisasi database terlebih dahulu baru menyalakan bot secara penuh
+# Menjalankan fungsi utama
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(load_database())
-    print("Ubot Pancing Otomatis Aktif & Siap Digunakan!")
-    app.run()
+    loop.run_until_complete(main())
