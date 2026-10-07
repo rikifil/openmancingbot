@@ -2,12 +2,12 @@ import os
 import asyncio
 from pyrogram import Client, filters
 
-# Mengambil konfigurasi dari Config Vars Heroku untuk keamanan
+# Mengambil konfigurasi dari Config Vars Heroku
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
 
-# Sesuai request Anda, target ID grup dimasukkan ke kode atau bisa via Heroku
+# ID Grup Target Spesifik yang Anda Inginkan
 TARGET_CHAT_ID = -1004380577102 
 
 # Inisialisasi Pyrogram Client
@@ -18,21 +18,21 @@ app = Client(
     session_string=SESSION_STRING
 )
 
-# Filter untuk mendeteksi pesan di grup spesifik
-@app.on_message(filters.chat(TARGET_CHAT_ID) & filters.text)
+# KUNCI PERBAIKAN: Mengunci filter agar HANYA merespons grup target Anda
+@app.on_message(filters.chat(TARGET_CHAT_ID) & filters.text & ~filters.me)
 async def deteksi_pancing(client, message):
-    # Mencari teks spesifik yang ada di bagian bawah gambar Anda
+    # Mencari teks spesifik sesuai gambar
     if "Hasil tangkapan sudah dikirim ke pesan bot masing-masing" in message.text:
-        print(f"[{message.chat.title}] Pesan pemicu terdeteksi! Mengirim perintah pancing...")
+        print("Pesan pemicu terdeteksi di grup target! Mengirim perintah pancing...")
         
-        # Jeda 1 detik agar terlihat natural dan menghindari spam block
+        # Jeda 1 detik agar terlihat natural
         await asyncio.sleep(1) 
         
-        # Mengirimkan pesan perintah sesuai request Anda
+        # Mengirimkan pesan perintah ke grup target
         await client.send_message(
             chat_id=TARGET_CHAT_ID,
             text="/open_mancing@fish_it_vip_bot"
         )
 
-print("Ubot Pancing Otomatis Aktif...")
+print("Ubot Pancing Otomatis Berhasil Aktif & Mengunci Satu Grup...")
 app.run()
