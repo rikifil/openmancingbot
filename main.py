@@ -12,10 +12,13 @@ API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
 
-# Kedua ID grup target Anda
+# DAFTAR ID GRUP TARGET ANDA
 GRUP_LAMA = -1004380577102
-GRUP_BARU = -1004389949822
-TARGET_CHATS = [GRUP_LAMA, GRUP_BARU] 
+GRUP_BARU_1 = -1004389949822
+GRUP_BARU_2 = -1004216238522  # Grup baru yang Anda tambahkan
+
+# Menggabungkan semua grup ke dalam satu list penyaring
+TARGET_CHATS = [GRUP_LAMA, GRUP_BARU_1, GRUP_BARU_2] 
 
 app = Client(
     "my_ubot",
@@ -25,14 +28,14 @@ app = Client(
     in_memory=True
 )
 
-# Filter mendeteksi pesan dari kedua grup
+# Filter mendeteksi pesan dari ketiga grup di atas
 @app.on_message(filters.chat(TARGET_CHATS) & filters.text & ~filters.me)
 async def deteksi_pancing(client, message):
     if "Hasil tangkapan sudah dikirim ke pesan bot masing-masing" in message.text:
         current_chat_id = message.chat.id
         
-        # Penyesuaian isi teks perintah berdasarkan masing-masing grup
-        if current_chat_id == GRUP_BARU:
+        # JIKA di GRUP_BARU_1 atau GRUP_BARU_2, kirim bot vip3
+        if current_chat_id in [GRUP_BARU_1, GRUP_BARU_2]:
             pesan_perintah = "/open_mancing@fish_it_vip3_bot"
         else:
             pesan_perintah = "/open_mancing@fish_it_vip_bot"
@@ -59,7 +62,7 @@ async def main():
         except Exception:
             print("Sinkronisasi database dilewati, ubot tetap berjalan.")
             
-        print("Ubot Pancing Otomatis Aktif dengan Perintah Berbeda di Tiap Grup!")
+        print("Ubot Pancing Otomatis Aktif untuk Tiga Grup Target!")
         
         # Menjaga skrip tetap stand-by 24 jam
         while True:
