@@ -19,13 +19,11 @@ TARGET_CHATS = [GRUP_1, GRUP_3]
 
 # ====================================================================
 # MENGAMBIL KATA KUNCI DARI HEROKU CONFIG VARS
-# Menggunakan pemisah koma (,) dan otomatis diubah ke huruf kecil semua
 # ====================================================================
 def ambil_kata_kunci(var_name):
     raw_input = os.environ.get(var_name, "")
     if not raw_input:
         return []
-    # Memisahkan berdasarkan koma dan menghapus spasi di awal/akhir kata
     return [kata.strip().lower() for kata in raw_input.split(",") if kata.strip()]
 
 KATA_UNTUK_PIN = ambil_kata_kunci("KATA_PIN")
@@ -59,15 +57,16 @@ async def ubot_multitask_handler(client, message):
                 return
 
         # ------------------------------------------------------------
-        # MODUL 2: AUTO PIN PESAN (Hanya jalan jika KATA_PIN diisi di Heroku)
+        # MODUL 2: AUTO PIN PESAN (Perbaikan: Menghapus parameter both_for_all)
         # ------------------------------------------------------------
         if KATA_UNTUK_PIN and any(kata in pesan_teks_lower for kata in KATA_UNTUK_PIN):
             print(f"[{current_chat_id}] Kata kunci PIN terdeteksi! Menyematkan pesan...")
-            await client.pin_chat_message(chat_id=current_chat_id, message_id=message.id, both_for_all=True)
+            # Menghapus both_for_all agar kompatibel dengan semua versi Pyrogram
+            await client.pin_chat_message(chat_id=current_chat_id, message_id=message.id)
             return
 
         # ------------------------------------------------------------
-        # MODUL 3: AUTO DELETE PESAN (Hanya jalan jika KATA_HAPUS diisi di Heroku)
+        # MODUL 3: AUTO DELETE PESAN
         # ------------------------------------------------------------
         if KATA_UNTUK_HAPUS and any(kata in pesan_teks_lower for kata in KATA_UNTUK_HAPUS):
             print(f"[{current_chat_id}] Kata kunci HAPUS terdeteksi! Menghapus pesan...")
