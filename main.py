@@ -12,12 +12,18 @@ API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
 
-# DAFTAR ID GRUP TARGET TERBARU (Grup 2 dihapus, sisa grup 1 dan grup 3)
+# DAFTAR ID GRUP TARGET AKTIF
 GRUP_1 = -1004380577102
 GRUP_3 = -1004216238522  
-
-# Menggabungkan grup yang aktif ke dalam satu list penyaring
 TARGET_CHATS = [GRUP_1, GRUP_3] 
+
+# ====================================================================
+# PENGATURAN KATA KUNCI (Silakan ubah kata di dalam tanda kutip sesuai keinginan)
+# gunakan huruf kecil semua di dalam daftar ini agar deteksi lebih akurat
+# ====================================================================
+KATA_UNTUK_PIN = ["#pengumuman", "info penting", "wajib baca"]
+KATA_UNTUK_HAPUS = ["judi online", "slot gacor", "link bokep", "open bo"]
+# ====================================================================
 
 app = Client(
     "my_ubot",
@@ -27,25 +33,44 @@ app = Client(
     in_memory=True
 )
 
-# Filter mendeteksi pesan dari kedua grup aktif di atas
-@app.on_message(filters.chat(TARGET_CHATS) & filters.text & ~filters.me)
-async def deteksi_pancing(client, message):
-    if "Hasil tangkapan sudah dikirim ke pesan bot masing-masing" in message.text:
-        current_chat_id = message.chat.id
-        
-        # Karena grup 1 dan grup 3 sama-sama menggunakan bot vip biasa
-        pesan_perintah = "/open_mancing@fish_it_vip_bot"
-            
-        print(f"Pemicu terdeteksi di grup {current_chat_id}! Mengirim: {pesan_perintah}")
-        
-        # Jeda 1 detik agar natural
-        await asyncio.sleep(1) 
-        
-        # Mengirimkan pesan perintah ke grup masing-masing
-        await client.send_message(
-            chat_id=current_chat_id,
-            text=pesan_perintah
-        )
+# Handler Utama untuk mendeteksi semua pesan teks di grup target
+@app.on_message(filters.chat(TARGET_CHATS) & filters.text)
+async def ubot_multitask_handler(client, message):
+    current_chat_id = message.chat.id
+    pesan_teks_lower = message.text.lower() # Mengubah teks ke huruf kecil semua untuk dicocokkan
+
+    try:
+        # ------------------------------------------------------------
+        # MODUL 1: DETEKSI PANCING (Hanya merespons jika pengirim BUKAN akun ubot sendiri)
+        # ------------------------------------------------------------
+        if not message.from_user or not message.from_user.is_self:
+            if "Hasil tangkapan sudah dikirim ke pesan bot masing-masing" in message.text:
+                pesan_perintah = "/open_mancing@fish_it_vip_bot"
+                print(f"[{current_chat_id}] Pemicu pancing terdeteksi! Mengirim perintah...")
+                await asyncio.sleep(1) 
+                await client.send_message(chat_id=current_chat_id, text=pesan_perintah)
+                return # Selesai memproses modul pancing
+
+        # ------------------------------------------------------------
+        # MODUL 2: AUTO PIN PESAN (Mengecek apakah pesan mengandung kata kunci PIN)
+        # ------------------------------------------------------------
+        if any(kata in pesan_teks_lower for kata in KATA_UNTUK_PIN):
+            print(f"[{current_chat_id}] Kata kunci PIN terdeteksi! Menyematkan pesan...")
+            # Parameter both_for_all=True artinya pesan ter-pin untuk semua anggota grup
+            await client.pin_chat_message(chat_id=current_chat_id, message_id=message.id, both_for_all=True)
+            return # Selesai memproses modul pin
+
+        # ------------------------------------------------------------
+        # MODUL 3: AUTO DELETE PESAN (Mengecek apakah pesan mengandung kata kunci HAPUS)
+        # ------------------------------------------------------------
+        if any(kata in pesan_teks_lower for kata in KATA_UNTUK_HAPUS):
+            print(f"[{current_chat_id}] Kata kunci HAPUS terdeteksi! Menghapus pesan...")
+            await client.delete_messages(chat_id=current_chat_id, message_ids=message.id)
+            return # Selesai memproses modul hapus
+
+    except Exception as e:
+        # Menangkap eror jika akun ubot Anda ternyata bukan admin saat mencoba PIN/HAPUS pesan
+        print(f"Gagal mengeksekusi aksi di grup {current_chat_id}: {e}")
 
 # Fungsi utama untuk sinkronisasi database peer/grup
 async def main():
@@ -58,13 +83,11 @@ async def main():
         except Exception:
             print("Sinkronisasi database dilewati, ubot tetap berjalan.")
             
-        print("Ubot Pancing Otomatis Aktif untuk Dua Grup (Keduanya menggunakan Bot VIP)!")
+        print("Ubot Multitask (Pancing + Auto Pin + Auto Delete) Berhasil Aktif!")
         
-        # Menjaga skrip tetap stand-by 24 jam
         while True:
             await asyncio.sleep(3600)
 
-# Menjalankan fungsi utama
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
