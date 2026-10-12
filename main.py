@@ -7,7 +7,7 @@ from pyrogram import Client, filters
 logging.basicConfig(level=logging.ERROR)
 logging.getLogger("pyrogram").setLevel(logging.CRITICAL)
 
-# Mengambil konfigurasi dari Config Vars Heroku
+# Mengambil konfigurasi dasar dari Config Vars Heroku
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
@@ -18,11 +18,18 @@ GRUP_3 = -1004216238522
 TARGET_CHATS = [GRUP_1, GRUP_3] 
 
 # ====================================================================
-# PENGATURAN KATA KUNCI (Silakan ubah kata di dalam tanda kutip sesuai keinginan)
-# gunakan huruf kecil semua di dalam daftar ini agar deteksi lebih akurat
+# MENGAMBIL KATA KUNCI DARI HEROKU CONFIG VARS
+# Menggunakan pemisah koma (,) dan otomatis diubah ke huruf kecil semua
 # ====================================================================
-KATA_UNTUK_PIN = ["#pengumuman", "info penting", "wajib baca"]
-KATA_UNTUK_HAPUS = ["judi online", "slot gacor", "link bokep", "open bo"]
+def ambil_kata_kunci(var_name):
+    raw_input = os.environ.get(var_name, "")
+    if not raw_input:
+        return []
+    # Memisahkan berdasarkan koma dan menghapus spasi di awal/akhir kata
+    return [kata.strip().lower() for kata in raw_input.split(",") if kata.strip()]
+
+KATA_UNTUK_PIN = ambil_kata_kunci("KATA_PIN")
+KATA_UNTUK_HAPUS = ambil_kata_kunci("KATA_HAPUS")
 # ====================================================================
 
 app = Client(
@@ -37,11 +44,11 @@ app = Client(
 @app.on_message(filters.chat(TARGET_CHATS) & filters.text)
 async def ubot_multitask_handler(client, message):
     current_chat_id = message.chat.id
-    pesan_teks_lower = message.text.lower() # Mengubah teks ke huruf kecil semua untuk dicocokkan
+    pesan_teks_lower = message.text.lower()
 
     try:
         # ------------------------------------------------------------
-        # MODUL 1: DETEKSI PANCING (Hanya merespons jika pengirim BUKAN akun ubot sendiri)
+        # MODUL 1: DETEKSI PANCING (Hanya merespons jika pengirim BUKAN ubot sendiri)
         # ------------------------------------------------------------
         if not message.from_user or not message.from_user.is_self:
             if "Hasil tangkapan sudah dikirim ke pesan bot masing-masing" in message.text:
@@ -49,27 +56,25 @@ async def ubot_multitask_handler(client, message):
                 print(f"[{current_chat_id}] Pemicu pancing terdeteksi! Mengirim perintah...")
                 await asyncio.sleep(1) 
                 await client.send_message(chat_id=current_chat_id, text=pesan_perintah)
-                return # Selesai memproses modul pancing
+                return
 
         # ------------------------------------------------------------
-        # MODUL 2: AUTO PIN PESAN (Mengecek apakah pesan mengandung kata kunci PIN)
+        # MODUL 2: AUTO PIN PESAN (Hanya jalan jika KATA_PIN diisi di Heroku)
         # ------------------------------------------------------------
-        if any(kata in pesan_teks_lower for kata in KATA_UNTUK_PIN):
+        if KATA_UNTUK_PIN and any(kata in pesan_teks_lower for kata in KATA_UNTUK_PIN):
             print(f"[{current_chat_id}] Kata kunci PIN terdeteksi! Menyematkan pesan...")
-            # Parameter both_for_all=True artinya pesan ter-pin untuk semua anggota grup
             await client.pin_chat_message(chat_id=current_chat_id, message_id=message.id, both_for_all=True)
-            return # Selesai memproses modul pin
+            return
 
         # ------------------------------------------------------------
-        # MODUL 3: AUTO DELETE PESAN (Mengecek apakah pesan mengandung kata kunci HAPUS)
+        # MODUL 3: AUTO DELETE PESAN (Hanya jalan jika KATA_HAPUS diisi di Heroku)
         # ------------------------------------------------------------
-        if any(kata in pesan_teks_lower for kata in KATA_UNTUK_HAPUS):
+        if KATA_UNTUK_HAPUS and any(kata in pesan_teks_lower for kata in KATA_UNTUK_HAPUS):
             print(f"[{current_chat_id}] Kata kunci HAPUS terdeteksi! Menghapus pesan...")
             await client.delete_messages(chat_id=current_chat_id, message_ids=message.id)
-            return # Selesai memproses modul hapus
+            return
 
     except Exception as e:
-        # Menangkap eror jika akun ubot Anda ternyata bukan admin saat mencoba PIN/HAPUS pesan
         print(f"Gagal mengeksekusi aksi di grup {current_chat_id}: {e}")
 
 # Fungsi utama untuk sinkronisasi database peer/grup
@@ -83,7 +88,7 @@ async def main():
         except Exception:
             print("Sinkronisasi database dilewati, ubot tetap berjalan.")
             
-        print("Ubot Multitask (Pancing + Auto Pin + Auto Delete) Berhasil Aktif!")
+        print("Ubot Multitask Config Vars Berhasil Aktif!")
         
         while True:
             await asyncio.sleep(3600)
